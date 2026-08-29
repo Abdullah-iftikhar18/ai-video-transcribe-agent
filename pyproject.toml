@@ -8,10 +8,15 @@ authors = [
 ]
 requires-python = ">=3.11"
 dependencies = [
-    "numpy>=2.4.6",
-    "pandas>=3.0.5",
-    "python-dotenv>=1.2.3",
-    "requests>=2.34.2",
+    "google-genai>=1.0.0",
+    "google-generativeai>=0.8.4",
+    "google-search-results>=2.4.2",
+    "groq>=0.18.0",
+    "pydantic>=2.10.0",
+    "python-dotenv>=1.0.1",
+    "requests>=2.32.0",
+    "rich>=13.9.0",
+    "yt-dlp>=2025.1.15",
 ]
 
 [project.scripts]

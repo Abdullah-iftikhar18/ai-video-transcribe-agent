@@ -1,2 +1,5 @@
+"""AI Video Transcribe Agent package root."""
+
 def main() -> None:
-    print("Hello from ai-video-transcribe-agent!")
+    from main import interactive_session
+    interactive_session()

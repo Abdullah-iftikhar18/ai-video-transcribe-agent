@@ -7,4 +7,23 @@ wheels/
 *.egg-info
 
 # Virtual environments
-.venv
+.venv/
+env/
+venv/
+
+# Environment Variables & Secrets (NEVER COMMIT API KEYS)
+.env
+.env.local
+.env.*.local
+
+# IDE & Editor files
+.vscode/
+.idea/
+*.code-workspace
+
+# Audio / temporary cache files
+temp_audio/
+*.m4a
+*.mp3
+*.wav
+*.mp4
