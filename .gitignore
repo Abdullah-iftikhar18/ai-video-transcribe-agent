@@ -27,3 +27,7 @@ temp_audio/
 *.mp3
 *.wav
 *.mp4
+
+# Generated Transcripts & Knowledge Base files (keep folder, ignore files)
+transcripts/*
+!transcripts/.gitkeep
