@@ -29,8 +29,29 @@ st.markdown("""
 <style>
   /* ── Typography: YouTube Roboto ────────────────────────────── */
   @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;600;700;900&display=swap');
-  html, body, [class*="st-"] {
+  
+  html, body, p, div, span, h1, h2, h3, h4, input, textarea {
     font-family: 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+
+  /* ── Preserve Streamlit Material Icons font ────────────────── */
+  [data-testid="stIconMaterial"],
+  [data-testid="stSidebarCollapseButton"] span,
+  [class*="material-symbols"],
+  [class*="material-icons"],
+  .material-symbols-rounded {
+    font-family: 'Material Symbols Rounded', 'Material Icons', sans-serif !important;
+    font-weight: normal !important;
+  }
+
+  /* Sidebar collapse button styling */
+  [data-testid="stSidebarCollapseButton"] {
+    color: #ffffff !important;
+    background: transparent !important;
+  }
+  [data-testid="stSidebarCollapseButton"]:hover {
+    background: #272727 !important;
+    border-radius: 50% !important;
   }
 
   /* ── Page Canvas: True YouTube Dark ────────────────────────── */
@@ -51,9 +72,26 @@ st.markdown("""
   section[data-testid="stSidebar"] .stMarkdown h1,
   section[data-testid="stSidebar"] .stMarkdown h2,
   section[data-testid="stSidebar"] .stMarkdown h3 {
-    color: #ffffff;
+    color: #ffffff !important;
     font-weight: 700;
     letter-spacing: -0.01em;
+  }
+
+  /* ── Sidebar captions & small text legibility ──────────────── */
+  section[data-testid="stSidebar"] [data-testid="stCaptionContainer"],
+  section[data-testid="stSidebar"] [data-testid="stCaptionContainer"] p,
+  section[data-testid="stSidebar"] p,
+  section[data-testid="stSidebar"] span,
+  .stCaption, [data-testid="stCaptionContainer"] p {
+    color: #b0b0b0 !important;
+    font-size: 0.85rem !important;
+    line-height: 1.45 !important;
+  }
+  section[data-testid="stSidebar"] label,
+  section[data-testid="stSidebar"] label p {
+    color: #ffffff !important;
+    font-weight: 500 !important;
+    font-size: 0.92rem !important;
   }
 
   /* ── YouTube Accent Palette Tokens ─────────────────────────── */
@@ -237,32 +275,55 @@ st.markdown("""
     box-shadow: 0 0 0 1px #FF0000 !important;
   }
 
-  /* ── Primary Action Buttons (YouTube Red) ──────────────────── */
-  .stButton > button {
-    background: #FF0000 !important;
-    color: #ffffff !important;
+  /* ── Primary Form Submit "Send" Button: YouTube Red ────────── */
+  div[data-testid="stFormSubmitButton"] button,
+  button[kind="primaryFormSubmit"],
+  button[kind="primary"] {
+    background-color: #FF0000 !important;
+    background-image: none !important;
+    color: #FFFFFF !important;
     border: none !important;
     border-radius: 8px !important;
-    font-weight: 600 !important;
-    font-size: .92rem !important;
-    padding: .55rem 1.6rem !important;
+    font-weight: 700 !important;
+    font-size: 0.95rem !important;
     letter-spacing: .02em !important;
-    transition: background .15s ease !important;
+    box-shadow: 0 2px 8px rgba(255, 0, 0, 0.4) !important;
+    transition: background-color .15s ease !important;
+  }
+  div[data-testid="stFormSubmitButton"] button p,
+  div[data-testid="stFormSubmitButton"] button span {
+    color: #FFFFFF !important;
+    font-weight: 700 !important;
+    font-size: 0.95rem !important;
+  }
+  div[data-testid="stFormSubmitButton"] button:hover {
+    background-color: #CC0000 !important;
+    color: #FFFFFF !important;
+    box-shadow: 0 4px 12px rgba(255, 0, 0, 0.6) !important;
+  }
+
+  /* ── Standard / Secondary Buttons ──────────────────────────── */
+  .stButton > button {
+    background-color: #212121 !important;
+    border: 1px solid #333333 !important;
+    color: #f1f1f1 !important;
+    border-radius: 8px !important;
+    font-weight: 600 !important;
+    font-size: .9rem !important;
+    transition: background-color .15s ease, border-color .15s ease !important;
   }
   .stButton > button:hover {
-    background: #CC0000 !important;
+    background-color: #2c2c2c !important;
+    border-color: #555555 !important;
     color: #ffffff !important;
   }
 
-  /* ── Secondary / Utility Buttons ───────────────────────────── */
-  .stButton > button[kind="secondary"] {
-    background: #212121 !important;
-    border: 1px solid #333333 !important;
-    color: #f1f1f1 !important;
-  }
-  .stButton > button[kind="secondary"]:hover {
-    background: #2a2a2a !important;
-    border-color: #444444 !important;
+  /* Danger / Highlight Buttons (Delete All Transcripts) */
+  button[key="kb_del_all_btn"],
+  div[data-testid="column"]:has(button[key="kb_del_all_btn"]) button {
+    background-color: #CC0000 !important;
+    border: none !important;
+    color: #ffffff !important;
   }
 
   /* ── Tabs (YouTube Navigation Bar) ─────────────────────────── */
