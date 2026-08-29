@@ -16,6 +16,7 @@ dependencies = [
     "python-dotenv>=1.0.1",
     "requests>=2.32.0",
     "rich>=13.9.0",
+    "streamlit>=1.62.0",
     "yt-dlp>=2025.1.15",
 ]
 

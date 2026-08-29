@@ -17,6 +17,22 @@ except ImportError:
     HAS_NEW_GENAI = False
 
 
+def get_audio_mime_type(file_path: str) -> str:
+    """Return appropriate audio MIME type based on file extension."""
+    from pathlib import Path
+    ext = Path(file_path).suffix.lower()
+    mapping = {
+        ".webm": "audio/webm",
+        ".m4a": "audio/mp4",
+        ".mp3": "audio/mp3",
+        ".wav": "audio/wav",
+        ".ogg": "audio/ogg",
+        ".aac": "audio/aac",
+        ".flac": "audio/flac",
+    }
+    return mapping.get(ext, "audio/mp4")
+
+
 def transcribe_video_with_gemini(
     video_url: str,
     auto_save_knowledge_base: bool = True,
@@ -74,10 +90,15 @@ Format your output clearly with the following markdown headers:
 
     remote_file = None
     try:
+        mime_type = get_audio_mime_type(audio_file_path)
         if HAS_NEW_GENAI:
             client = genai.Client(api_key=api_key)
-            # Upload audio file to Gemini Files API
-            uploaded_file = client.files.upload(file=audio_file_path)
+            # Upload audio file to Gemini Files API with explicit audio MIME type
+            upload_config = types.UploadFileConfig(mime_type=mime_type) if hasattr(types, "UploadFileConfig") else None
+            if upload_config:
+                uploaded_file = client.files.upload(file=audio_file_path, config=upload_config)
+            else:
+                uploaded_file = client.files.upload(file=audio_file_path)
             remote_file = uploaded_file
 
             # Wait briefly if processing state is active
@@ -102,7 +123,7 @@ Format your output clearly with the following markdown headers:
 
         else:
             genai_classic.configure(api_key=api_key)
-            uploaded_file = genai_classic.upload_file(path=audio_file_path)
+            uploaded_file = genai_classic.upload_file(path=audio_file_path, mime_type=mime_type)
             remote_file = uploaded_file
 
             while uploaded_file.state.name == "PROCESSING":

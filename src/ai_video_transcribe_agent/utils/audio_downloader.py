@@ -18,8 +18,7 @@ def download_youtube_audio(video_url: str, output_dir: Optional[Path] = None) ->
         Dictionary containing the local audio file path, title, channel, duration, and status.
     """
     if not output_dir:
-        temp_dir = Path(tempfile.gettempdir()) / "ai_transcribe_audio"
-        temp_dir.mkdir(parents=True, exist_ok=True)
+        temp_dir = Path(tempfile.mkdtemp(prefix="yt_audio_"))
         output_dir = temp_dir
 
     out_template = str(output_dir / "%(id)s.%(ext)s")
@@ -30,7 +29,8 @@ def download_youtube_audio(video_url: str, output_dir: Optional[Path] = None) ->
         "noplaylist": True,
         "quiet": True,
         "no_warnings": True,
-        # Restrict filenames to avoid unicode filepath issues on Windows
+        "overwrites": True,
+        "windowsfilenames": True,
         "restrictfilenames": True,
     }
 
@@ -80,10 +80,14 @@ def download_youtube_audio(video_url: str, output_dir: Optional[Path] = None) ->
 
 
 def cleanup_audio_file(file_path: str) -> None:
-    """Safely delete a temporary audio file."""
+    """Safely delete a temporary audio file and its enclosing folder."""
+    import shutil
     try:
         p = Path(file_path)
         if p.exists() and p.is_file():
-            p.unlink()
+            parent = p.parent
+            p.unlink(missing_ok=True)
+            if parent.name.startswith("yt_audio_"):
+                shutil.rmtree(parent, ignore_errors=True)
     except Exception:
         pass

@@ -59,11 +59,19 @@ You have access to the following tools:
 class VideoTranscribeAgent:
     """Multi-tool autonomous agent capable of searching, transcribing, and organizing video knowledge."""
 
-    def __init__(self, provider: Optional[str] = None):
+    def __init__(self, provider: Optional[str] = None, step_callback: Optional[Callable] = None):
         self.provider = provider or Config.DEFAULT_LLM_PROVIDER
         self.messages: list[dict[str, Any]] = [
             {"role": "system", "content": SYSTEM_PROMPT}
         ]
+        # Optional callback: step_callback(event_type, data_dict)
+        # event_type is one of: "tool_call", "tool_result", "thinking"
+        self.step_callback = step_callback
+
+    def _notify(self, event_type: str, data: dict):
+        """Send a step event to the callback (if registered) and to the Rich console."""
+        if self.step_callback:
+            self.step_callback(event_type, data)
 
     def _execute_groq_loop(self, max_steps: int = 6) -> str:
         """Run tool calling loop using Groq API."""
@@ -78,6 +86,8 @@ class VideoTranscribeAgent:
         model = Config.DEFAULT_GROQ_MODEL
 
         for step in range(max_steps):
+            self._notify("thinking", {"step": step + 1, "message": "Reasoning about next action..."})
+
             response = client.chat.completions.create(
                 model=model,
                 messages=self.messages,
@@ -106,6 +116,12 @@ class VideoTranscribeAgent:
                 except Exception:
                     function_args = {}
 
+                self._notify("tool_call", {
+                    "step": step + 1,
+                    "tool_name": function_name,
+                    "arguments": function_args,
+                })
+
                 console.print(
                     Panel(
                         f"[bold yellow]Tool Call:[/bold yellow] [bold cyan]{function_name}[/bold cyan]\n"
@@ -123,6 +139,12 @@ class VideoTranscribeAgent:
                         tool_result = {"success": False, "error": str(e)}
                 else:
                     tool_result = {"success": False, "error": f"Tool '{function_name}' not found."}
+
+                self._notify("tool_result", {
+                    "step": step + 1,
+                    "tool_name": function_name,
+                    "result": tool_result,
+                })
 
                 console.print(
                     Panel(
@@ -175,6 +197,8 @@ class VideoTranscribeAgent:
             "",
         )
 
+        self._notify("thinking", {"step": 1, "message": "Gemini is processing with automatic tool execution..."})
+
         console.print(
             Panel(
                 f"[bold cyan]Running Gemini Agent with Automatic Tool Execution...[/bold cyan]",
@@ -194,3 +218,4 @@ class VideoTranscribeAgent:
             return self._execute_gemini_loop()
         else:
             return self._execute_groq_loop()
+
