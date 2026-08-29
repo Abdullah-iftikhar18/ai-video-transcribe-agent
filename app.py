@@ -345,11 +345,86 @@ st.markdown("""
     font-weight: 700 !important;
   }
 
-  /* ── Expander ──────────────────────────────────────────────── */
-  .streamlit-expanderHeader {
+  /* ── Streamlit Status Widget ("Agent is working...") ──────── */
+  [data-testid="stStatusWidget"],
+  div[data-testid="stStatusWidget"],
+  div[data-testid="stStatusWidget"] details {
     background-color: #181818 !important;
-    color: #f1f1f1 !important;
+    border: 1px solid #303030 !important;
+    border-radius: 8px !important;
+    color: #ffffff !important;
+    overflow: hidden !important;
+  }
+
+  [data-testid="stStatusWidget"] summary,
+  div[data-testid="stStatusWidget"] summary,
+  div[data-testid="stStatusWidget"] > details > summary,
+  details summary {
+    background-color: #212121 !important;
+    background-image: none !important;
+    color: #ffffff !important;
+    border: 1px solid #383838 !important;
+    border-radius: 8px !important;
+    padding: 0.65rem 1rem !important;
+    font-weight: 600 !important;
+    transition: background-color 0.15s ease !important;
+  }
+
+  [data-testid="stStatusWidget"] summary:hover,
+  div[data-testid="stStatusWidget"] summary:hover,
+  details summary:hover {
+    background-color: #2a2a2a !important;
+  }
+
+  /* Force all text inside status bar to be high-contrast white */
+  [data-testid="stStatusWidget"] summary *,
+  [data-testid="stStatusWidget"] summary p,
+  [data-testid="stStatusWidget"] summary span,
+  div[data-testid="stStatusWidget"] summary p,
+  div[data-testid="stStatusWidget"] summary span {
+    color: #ffffff !important;
+    font-weight: 600 !important;
+    font-size: 0.95rem !important;
+  }
+
+  /* Status widget inner body */
+  [data-testid="stStatusWidget"] [data-testid="stExpanderDetails"],
+  div[data-testid="stStatusWidget"] details[open] > div {
+    background-color: #181818 !important;
+    color: #e0e0e0 !important;
+    padding: 0.85rem 1.2rem !important;
+    border-top: 1px solid #282828 !important;
+  }
+
+  [data-testid="stStatusWidget"] p,
+  [data-testid="stStatusWidget"] span {
+    color: #e0e0e0 !important;
+  }
+
+  /* ── General Expander ──────────────────────────────────────── */
+  div[data-testid="stExpander"] summary {
+    background-color: #1f1f1f !important;
+    color: #ffffff !important;
+    border: 1px solid #303030 !important;
+    border-radius: 8px !important;
+  }
+  div[data-testid="stExpander"] summary:hover {
+    background-color: #272727 !important;
+  }
+  div[data-testid="stExpander"] summary * {
+    color: #ffffff !important;
+  }
+  div[data-testid="stExpander"] [data-testid="stExpanderDetails"] {
+    background-color: #181818 !important;
     border: 1px solid #282828 !important;
+    border-top: none !important;
+    border-radius: 0 0 8px 8px !important;
+  }
+
+  .streamlit-expanderHeader {
+    background-color: #212121 !important;
+    color: #ffffff !important;
+    border: 1px solid #333333 !important;
     border-radius: 6px !important;
   }
 
