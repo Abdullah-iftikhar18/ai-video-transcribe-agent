@@ -113,7 +113,7 @@ ai-video-transcribe-agent/
 
 ---
 
-## 🌟 Key Highlights for Internship Submission
+## 🌟 Core Architecture & Engineering Highlights
 - **Multi-Tool Calling**: Autonomous decision-making using industry-standard function calling specs.
 - **Multimodal AI**: Direct audio processing via Gemini 2.0/1.5 API.
 - **Resilient Fallbacks**: Clean error handling when network requests fail or invalid links are passed.
