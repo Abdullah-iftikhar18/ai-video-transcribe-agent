@@ -136,3 +136,27 @@ def list_knowledge_base_transcripts() -> dict[str, Any]:
             "error": f"Failed to list Knowledge Base transcripts: {str(e)}",
             "transcripts": [],
         }
+
+
+def clear_knowledge_base() -> dict[str, Any]:
+    """Delete all saved transcripts and metadata from the Knowledge Base, keeping .gitkeep."""
+    try:
+        Config.initialize()
+        transcripts_dir = Config.TRANSCRIPTS_DIR
+        deleted_count = 0
+        for f in transcripts_dir.iterdir():
+            if f.is_file() and f.name != ".gitkeep":
+                f.unlink(missing_ok=True)
+                deleted_count += 1
+
+        return {
+            "success": True,
+            "deleted_count": deleted_count,
+            "message": f"Successfully deleted {deleted_count} files from Knowledge Base.",
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Failed to clear Knowledge Base: {str(e)}",
+        }
+

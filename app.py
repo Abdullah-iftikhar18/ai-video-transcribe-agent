@@ -173,7 +173,10 @@ st.markdown("""
 # ── Lazy imports (after page config) ─────────────────────────────────────────
 from src.ai_video_transcribe_agent.config import Config
 from src.ai_video_transcribe_agent.agent import VideoTranscribeAgent
-from src.ai_video_transcribe_agent.tools.knowledge_base import list_knowledge_base_transcripts
+from src.ai_video_transcribe_agent.tools.knowledge_base import (
+    list_knowledge_base_transcripts,
+    clear_knowledge_base,
+)
 
 
 # ── Session state initialisation ─────────────────────────────────────────────
@@ -209,6 +212,32 @@ with st.sidebar:
         horizontal=True,
         help="Groq = fast tool-calling via Llama. Gemini = auto function calling.",
     )
+
+    st.markdown("---")
+    st.markdown("### Workspace Actions")
+    st.caption("Clear chat messages and delete saved transcripts.")
+
+    col_btn1, col_btn2 = st.columns(2)
+    with col_btn1:
+        if st.button("Clear Chat", use_container_width=True):
+            st.session_state.chat_history = []
+            st.session_state.agent_steps = []
+            st.rerun()
+
+    with col_btn2:
+        if st.button("Delete Files", use_container_width=True):
+            clear_knowledge_base()
+            st.session_state.pop("_reading", None)
+            st.rerun()
+
+    if st.button("🗑️ Reset All (Chat & Transcripts)", use_container_width=True):
+        clear_knowledge_base()
+        st.session_state.chat_history = []
+        st.session_state.agent_steps = []
+        st.session_state.pop("_reading", None)
+        st.success("All transcripts and chat history cleared!")
+        time.sleep(0.3)
+        st.rerun()
 
 
 # ── Main area: Tabs ──────────────────────────────────────────────────────────
@@ -380,16 +409,24 @@ with tab_agent:
 #  TAB 2 — Knowledge Base Browser
 # ═════════════════════════════════════════════════════════════════════════════
 with tab_kb:
-    st.markdown(
-        '<h2 style="color:#e8e8ed;font-size:1.35rem;font-weight:700;margin-bottom:.25rem">'
-        "Knowledge Base</h2>"
-        '<p style="color:#8888a0;font-size:.85rem;margin-bottom:1.2rem">'
-        "Browse, read, and download your saved video transcripts.</p>",
-        unsafe_allow_html=True,
-    )
-
     kb_data = list_knowledge_base_transcripts()
     items = kb_data.get("transcripts", [])
+
+    col_kb_title, col_kb_clear = st.columns([4, 2])
+    with col_kb_title:
+        st.markdown(
+            '<h2 style="color:#e8e8ed;font-size:1.35rem;font-weight:700;margin-bottom:.25rem">'
+            "Knowledge Base</h2>"
+            '<p style="color:#8888a0;font-size:.85rem;margin-bottom:1.2rem">'
+            "Browse, read, and download your saved video transcripts.</p>",
+            unsafe_allow_html=True,
+        )
+    with col_kb_clear:
+        if items:
+            if st.button("🗑️ Delete All Transcripts", key="kb_del_all_btn", use_container_width=True):
+                clear_knowledge_base()
+                st.session_state.pop("_reading", None)
+                st.rerun()
 
     if not items:
         st.info("No transcripts saved yet. Use the Agent tab to search and transcribe a video.")

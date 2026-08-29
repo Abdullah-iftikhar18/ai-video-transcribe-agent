@@ -5,6 +5,7 @@ from .transcription import transcribe_video_with_gemini
 from .knowledge_base import (
     save_transcript_to_file,
     list_knowledge_base_transcripts,
+    clear_knowledge_base,
 )
 
 __all__ = [
@@ -12,4 +13,5 @@ __all__ = [
     "transcribe_video_with_gemini",
     "save_transcript_to_file",
     "list_knowledge_base_transcripts",
+    "clear_knowledge_base",
 ]
