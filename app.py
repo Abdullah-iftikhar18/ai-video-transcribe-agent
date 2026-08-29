@@ -171,6 +171,13 @@ st.markdown("""
 
 
 # ── Lazy imports (after page config) ─────────────────────────────────────────
+import sys
+from pathlib import Path
+
+ROOT_DIR = Path(__file__).resolve().parent
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
+
 from src.ai_video_transcribe_agent.config import Config
 from src.ai_video_transcribe_agent.agent import VideoTranscribeAgent
 from src.ai_video_transcribe_agent.tools.knowledge_base import (
