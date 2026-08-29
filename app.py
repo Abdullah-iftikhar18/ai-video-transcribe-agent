@@ -199,8 +199,8 @@ def _tool_label(name: str) -> tuple[str, str]:
 
 # ── Sidebar ──────────────────────────────────────────────────────────────────
 with st.sidebar:
-    st.markdown("## ◎ Agent Config")
-    st.caption("Adjust agent behaviour and inspect API status.")
+    st.markdown("## ◎ Agent Settings")
+    st.caption("Configure your AI model provider.")
 
     provider = st.radio(
         "LLM Provider",
@@ -209,29 +209,6 @@ with st.sidebar:
         horizontal=True,
         help="Groq = fast tool-calling via Llama. Gemini = auto function calling.",
     )
-
-    st.markdown("---")
-    st.markdown("### API Key Status")
-    key_status = Config.validate_keys()
-    for svc, ok in key_status.items():
-        icon = "●" if ok else "○"
-        colour = "#34d399" if ok else "#f87171"
-        st.markdown(
-            f'<span style="color:{colour};font-weight:600">{icon}</span>&ensp;'
-            f'<span style="color:var(--text-primary);font-size:.88rem">{svc.upper()}</span>',
-            unsafe_allow_html=True,
-        )
-
-    st.markdown("---")
-    st.markdown("### Quick prompts")
-    prompts = [
-        "Find a short video on Python decorators and transcribe it",
-        "What transcripts are in my knowledge base?",
-    ]
-    for p in prompts:
-        if st.button(p, key=f"qp_{hash(p)}", use_container_width=True):
-            st.session_state["_prefill"] = p
-            st.rerun()
 
 
 # ── Main area: Tabs ──────────────────────────────────────────────────────────
@@ -271,34 +248,67 @@ with tab_agent:
             if entry["role"] == "user":
                 st.markdown(f'<div class="user-msg">{entry["content"]}</div>', unsafe_allow_html=True)
             else:
-                st.markdown(f'<div class="agent-msg">{entry["content"]}</div>', unsafe_allow_html=True)
+                with st.container():
+                    steps = entry.get("steps", [])
 
-                # Inline tool steps (collapsible)
-                steps = entry.get("steps", [])
-                if steps:
-                    with st.expander(f"Tool execution trace  ({len(steps)} steps)"):
-                        for s in steps:
-                            if s["type"] == "tool_call":
-                                label, icon = _tool_label(s["tool_name"])
-                                st.markdown(
-                                    f'<div class="step-pill">{icon} {label}</div>',
-                                    unsafe_allow_html=True,
-                                )
-                                st.code(json.dumps(s["arguments"], indent=2), language="json")
-                            elif s["type"] == "tool_result":
-                                label, icon = _tool_label(s["tool_name"])
-                                result = s.get("result", {})
-                                success = result.get("success", False)
-                                badge = "✓" if success else "✗"
-                                st.markdown(
-                                    f'<div class="step-pill result">{badge} {label} returned</div>',
-                                    unsafe_allow_html=True,
-                                )
-                                # Show a compact summary of the result
-                                preview = json.dumps(result, indent=2, default=str)
-                                if len(preview) > 600:
-                                    preview = preview[:600] + "\n  …"
-                                st.code(preview, language="json")
+                    # 1. Display prominent Source Video Link banner if a video was transcribed
+                    for s in steps:
+                        if s.get("type") == "tool_result" and s.get("tool_name") == "transcribe_video":
+                            res = s.get("result", {})
+                            v_url = res.get("video_url")
+                            v_title = res.get("title", "Source Video")
+                            v_chan = res.get("channel", "YouTube")
+                            if v_url:
+                                st.markdown(f"""
+                                <div style="background: rgba(108,99,255,0.12); border: 1px solid rgba(108,99,255,0.4); border-left: 5px solid #6c63ff; border-radius: 10px; padding: 14px 18px; margin-bottom: 14px;">
+                                    <div style="font-size: 0.75rem; color: #a5b4fc; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px;">🎬 Source Video Link</div>
+                                    <div style="font-size: 1.15rem; font-weight: 700; margin-bottom: 4px;"><a href="{v_url}" target="_blank" style="color: #60a5fa; text-decoration: none;">{v_title} ↗</a></div>
+                                    <div style="font-size: 0.85rem; color: #9ca3af;">Channel: {v_chan} &bull; <a href="{v_url}" target="_blank" style="color: #93c5fd; text-decoration: underline;">{v_url}</a></div>
+                                </div>
+                                """, unsafe_allow_html=True)
+                                break
+
+                    # 2. Main Response (Executive Summary + Key Takeaways)
+                    st.markdown(entry["content"])
+
+                    # 3. Always show the Full Transcript in front alongside the summary
+                    for s in steps:
+                        if s.get("type") == "tool_result" and s.get("tool_name") == "transcribe_video":
+                            res = s.get("result", {})
+                            transcript_text = res.get("transcript", "")
+                            # If the agent output did not already include the full transcript, display it right here
+                            if transcript_text and "Full Transcript" not in entry["content"]:
+                                st.markdown("---")
+                                st.markdown("### 🎙️ Full Video Transcript")
+                                st.markdown(transcript_text)
+
+                    # 4. Collapsible tool execution trace
+                    if steps:
+                        with st.expander(f"Tool execution trace  ({len(steps)} steps)"):
+                            for s in steps:
+                                if s["type"] == "tool_call":
+                                    label, icon = _tool_label(s["tool_name"])
+                                    st.markdown(
+                                        f'<div class="step-pill">{icon} {label}</div>',
+                                        unsafe_allow_html=True,
+                                    )
+                                    st.code(json.dumps(s["arguments"], indent=2), language="json")
+                                elif s["type"] == "tool_result":
+                                    label, icon = _tool_label(s["tool_name"])
+                                    result = s.get("result", {})
+                                    success = result.get("success", False)
+                                    badge = "✓" if success else "✗"
+                                    st.markdown(
+                                        f'<div class="step-pill result">{badge} {label} returned</div>',
+                                        unsafe_allow_html=True,
+                                    )
+                                    # Show a compact summary of the result
+                                    preview = json.dumps(result, indent=2, default=str)
+                                    if len(preview) > 600:
+                                        preview = preview[:600] + "\n  …"
+                                    st.code(preview, language="json")
+
+                    st.markdown("<div style='margin-bottom: 1.5rem;'></div>", unsafe_allow_html=True)
 
     # ── Input area ───────────────────────────────────────────────────────────
     prefill = st.session_state.pop("_prefill", "")

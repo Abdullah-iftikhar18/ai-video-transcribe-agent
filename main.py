@@ -50,7 +50,6 @@ def check_api_keys():
         console.print(Panel(warning_msg, border_style="red", title="API Key Status"))
         return False
     else:
-        console.print("[green]✔ All API Keys (SerpApi, Gemini, Groq) are loaded and ready![/green]\n")
         return True
 
 
@@ -62,11 +61,7 @@ def interactive_session():
     if not keys_ok:
         console.print("[yellow]Tip: You can still explore the code or add your keys in .env and restart.[/yellow]\n")
 
-    console.print("[bold]Type your query or task below[/bold] [dim](or type 'exit' to quit):[/dim]")
-    console.print("[dim]Examples:[/dim]")
-    console.print(" • [cyan]Find a short video on Python decorators and transcribe it for me.[/cyan]")
-    console.print(" • [cyan]Transcribe this video: https://www.youtube.com/watch?v=kqtD5dpn9C8[/cyan]")
-    console.print(" • [cyan]What transcripts do I have in my knowledge base?[/cyan]\n")
+    console.print("[bold]Type your query or task below[/bold] [dim](or type 'exit' to quit):[/dim]\n")
 
     while True:
         try:
