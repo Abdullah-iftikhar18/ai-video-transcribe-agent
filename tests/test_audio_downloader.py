@@ -6,6 +6,7 @@ from pathlib import Path
 from src.ai_video_transcribe_agent.utils.audio_downloader import (
     cleanup_audio_file,
     download_youtube_audio,
+    extract_youtube_transcript_fast,
 )
 
 
@@ -47,6 +48,11 @@ class TestAudioDownloader(unittest.TestCase):
         self.assertIsInstance(res, dict)
         self.assertFalse(res.get("success"))
         self.assertIn("error", res)
+
+    def test_extract_fast_invalid_url(self):
+        """Ensure extract_youtube_transcript_fast returns None gracefully on invalid URL."""
+        res = extract_youtube_transcript_fast("https://www.youtube.com/watch?v=invalid_id_999999999")
+        self.assertIsNone(res)
 
 
 if __name__ == "__main__":
