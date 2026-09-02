@@ -163,13 +163,14 @@ Format your output clearly with the following markdown headers:
             start_tak = takeaways_match.end()
             end_tak = transcript_match.start() if transcript_match and transcript_match.start() > start_tak else len(raw_text)
             raw_takeaways = raw_text[start_tak:end_tak].strip()
-            takeaways = [
-                t.strip("- *•").strip()
-                for t in raw_takeaways.split("\n")
-                if t.strip().startswith(("-", "*", "•")) or (t.strip() and t.strip()[0].isdigit())
-            ]
-            if not takeaways:
-                takeaways = [t.strip("- *•").strip() for t in raw_takeaways.split("\n") if t.strip()]
+            takeaways = []
+            for line in raw_takeaways.split("\n"):
+                s = line.strip()
+                if not s or s in ("-", "*", "•"):
+                    continue
+                clean_item = re.sub(r"^[-*•\d.]+\s*", "", s).strip()
+                if clean_item:
+                    takeaways.append(clean_item)
 
         if transcript_match:
             transcript = raw_text[transcript_match.end():].strip()
