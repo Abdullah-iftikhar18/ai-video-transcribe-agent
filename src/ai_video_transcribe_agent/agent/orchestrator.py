@@ -2,7 +2,8 @@
 
 import json
 import sys
-from typing import Any, Callable, Generator, Optional
+import time
+from typing import Any, Callable, Optional
 from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
@@ -181,8 +182,6 @@ class VideoTranscribeAgent:
                 "GEMINI_API_KEY is missing in your .env file. Please add it to use the Gemini agent."
             )
 
-        genai.configure(api_key=Config.GEMINI_API_KEY)
-
         # Wrapped tool callbacks so UI can track Gemini's automatic tool calls
         def wrapped_search_youtube_videos(query: str, max_results: int = 3) -> dict[str, Any]:
             """Search YouTube for relevant videos using SerpApi."""
@@ -245,7 +244,9 @@ class VideoTranscribeAgent:
                         ),
                     )
                     response = chat.send_message(last_user_msg)
-                    return response.text or "Done."
+                    answer = response.text or "Done."
+                    self.messages.append({"role": "assistant", "content": answer})
+                    return answer
                 except Exception as e:
                     last_err = e
                     err_str = str(e).lower()
@@ -271,14 +272,16 @@ class VideoTranscribeAgent:
                         chat = model.start_chat(enable_automatic_function_calling=True)
                         response = chat.send_message(last_user_msg)
                         try:
-                            return response.text or "Done."
+                            answer = response.text or "Done."
                         except Exception:
                             parts_text = []
                             for candidate in getattr(response, "candidates", []):
                                 for part in getattr(candidate.content, "parts", []):
                                     if hasattr(part, "text") and part.text:
                                         parts_text.append(part.text)
-                            return "\n\n".join(parts_text) if parts_text else "Done."
+                            answer = "\n\n".join(parts_text) if parts_text else "Done."
+                        self.messages.append({"role": "assistant", "content": answer})
+                        return answer
                     except Exception as e:
                         last_err = e
                         err_str = str(e).lower()
@@ -290,7 +293,9 @@ class VideoTranscribeAgent:
         except Exception as e:
             last_err = e
 
-        return f"⚠️ Gemini services are currently experiencing high demand spikes (503). Please switch to the Groq reasoning engine in the sidebar or try again in a moment. Details: {last_err}"
+        fail_msg = f"⚠️ Gemini services are currently experiencing high demand spikes (503). Please switch to the Groq reasoning engine in the sidebar or try again in a moment. Details: {last_err}"
+        self.messages.append({"role": "assistant", "content": fail_msg})
+        return fail_msg
 
     def run(self, user_query: str) -> str:
         """Run the agent on a user query with the configured LLM provider."""
