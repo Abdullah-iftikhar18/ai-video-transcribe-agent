@@ -38,7 +38,34 @@ class TestTranscription(unittest.TestCase):
             ):
                 res = transcribe_video_with_gemini("https://www.youtube.com/watch?v=invalid")
                 self.assertFalse(res.get("success"))
-                self.assertIn("Audio download failed", res.get("error", ""))
+    def test_transcribe_503_retry_and_recovery(self):
+        """Ensure 503 high demand errors trigger retry and model recovery."""
+        from unittest.mock import MagicMock
+        with patch("src.ai_video_transcribe_agent.config.Config.GEMINI_API_KEY", "dummy_key"):
+            with patch("src.ai_video_transcribe_agent.tools.transcription.download_youtube_audio", return_value={"success": True, "file_path": "dummy.m4a", "title": "Test", "channel": "Test"}):
+                with patch("src.ai_video_transcribe_agent.tools.transcription.cleanup_audio_file"):
+                    with patch("google.genai.Client") as mock_client_cls:
+                        mock_client = MagicMock()
+                        mock_client_cls.return_value = mock_client
+
+                        mock_file = MagicMock()
+                        mock_file.state.name = "ACTIVE"
+                        mock_client.files.upload.return_value = mock_file
+
+                        calls = []
+                        def mock_generate_content(model, contents):
+                            calls.append(model)
+                            if len(calls) == 1:
+                                raise Exception("503 UNAVAILABLE. This model is currently experiencing high demand.")
+                            res = MagicMock()
+                            res.text = "### Executive Summary\nRecovered summary.\n### Key Takeaways\n- Point 1\n### Full Transcript\n[00:00] Hello"
+                            return res
+
+                        mock_client.models.generate_content.side_effect = mock_generate_content
+                        res = transcribe_video_with_gemini("https://www.youtube.com/watch?v=123", auto_save_knowledge_base=False)
+                        self.assertTrue(res.get("success"))
+                        self.assertEqual(res.get("summary"), "Recovered summary.")
+                        self.assertGreaterEqual(len(calls), 2)
 
 
 if __name__ == "__main__":

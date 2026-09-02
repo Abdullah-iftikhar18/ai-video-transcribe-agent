@@ -22,6 +22,19 @@ class Config:
     DEFAULT_GROQ_MODEL: str = os.getenv("DEFAULT_GROQ_MODEL", "openai/gpt-oss-120b")
     DEFAULT_GEMINI_MODEL: str = os.getenv("DEFAULT_GEMINI_MODEL", "gemini-3.6-flash")
 
+    @classmethod
+    def get_gemini_models_chain(cls) -> list[str]:
+        """Return prioritized list of Gemini models to fallback through on 503 / high demand spikes."""
+        preferred = cls.DEFAULT_GEMINI_MODEL
+        candidates = [preferred, "gemini-3.8-flash", "gemini-3.5-flash", "gemini-3.6-flash"]
+        seen = set()
+        chain = []
+        for m in candidates:
+            if m and m not in seen:
+                seen.add(m)
+                chain.append(m)
+        return chain
+
     # Knowledge Base / Storage paths
     TRANSCRIPTS_DIR: Path = ROOT_DIR / os.getenv("TRANSCRIPTS_DIR", "transcripts")
 

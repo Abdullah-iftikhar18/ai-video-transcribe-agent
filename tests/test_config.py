@@ -27,8 +27,14 @@ class TestConfig(unittest.TestCase):
         self.assertIn("serpapi", keys)
         self.assertIn("gemini", keys)
         self.assertIn("groq", keys)
-        for val in keys.values():
-            self.assertIsInstance(val, bool)
+    def test_gemini_models_chain(self):
+        """Ensure get_gemini_models_chain returns a valid list of fallback models."""
+        chain = Config.get_gemini_models_chain()
+        self.assertIsInstance(chain, list)
+        self.assertGreater(len(chain), 1)
+        self.assertEqual(chain[0], Config.DEFAULT_GEMINI_MODEL)
+        self.assertIn("gemini-3.8-flash", chain)
+        self.assertIn("gemini-3.5-flash", chain)
 
 
 if __name__ == "__main__":

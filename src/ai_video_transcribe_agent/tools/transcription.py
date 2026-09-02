@@ -114,11 +114,33 @@ Format your output clearly with the following markdown headers:
             if uploaded_file.state.name == "FAILED":
                 raise RuntimeError("Gemini File API failed to process the audio file.")
 
-            # Generate transcription content
-            response = client.models.generate_content(
-                model=Config.DEFAULT_GEMINI_MODEL,
-                contents=[uploaded_file, transcription_prompt],
-            )
+            # Generate transcription content with automatic 503 high-demand retry & model fallback
+            models_to_try = Config.get_gemini_models_chain()
+            response = None
+            last_err = None
+
+            for model_name in models_to_try:
+                for attempt in range(2):
+                    try:
+                        response = client.models.generate_content(
+                            model=model_name,
+                            contents=[uploaded_file, transcription_prompt],
+                        )
+                        break
+                    except Exception as e:
+                        last_err = e
+                        err_str = str(e).lower()
+                        if any(marker in err_str for marker in ("503", "high demand", "unavailable", "429", "resource_exhausted")):
+                            time.sleep(1.5 * (attempt + 1))
+                            continue
+                        else:
+                            break
+                if response is not None:
+                    break
+
+            if response is None:
+                raise last_err or RuntimeError("Gemini models unavailable due to high demand spikes.")
+
             raw_text = response.text or ""
             # Clean up remote file
             try:
@@ -135,8 +157,30 @@ Format your output clearly with the following markdown headers:
                 time.sleep(2)
                 uploaded_file = genai_classic.get_file(uploaded_file.name)
 
-            model = genai_classic.GenerativeModel(Config.DEFAULT_GEMINI_MODEL)
-            response = model.generate_content([uploaded_file, transcription_prompt])
+            models_to_try = Config.get_gemini_models_chain()
+            response = None
+            last_err = None
+
+            for model_name in models_to_try:
+                for attempt in range(2):
+                    try:
+                        model = genai_classic.GenerativeModel(model_name)
+                        response = model.generate_content([uploaded_file, transcription_prompt])
+                        break
+                    except Exception as e:
+                        last_err = e
+                        err_str = str(e).lower()
+                        if any(marker in err_str for marker in ("503", "high demand", "unavailable", "429", "resource_exhausted")):
+                            time.sleep(1.5 * (attempt + 1))
+                            continue
+                        else:
+                            break
+                if response is not None:
+                    break
+
+            if response is None:
+                raise last_err or RuntimeError("Gemini models unavailable due to high demand spikes.")
+
             raw_text = response.text or ""
             try:
                 genai_classic.delete_file(uploaded_file.name)

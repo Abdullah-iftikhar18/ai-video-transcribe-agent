@@ -226,40 +226,71 @@ class VideoTranscribeAgent:
             )
         )
 
-        try:
-            from google import genai
-            from google.genai import types
+        models_to_try = Config.get_gemini_models_chain()
+        last_err = None
 
-            client = genai.Client(api_key=Config.GEMINI_API_KEY)
-            chat = client.chats.create(
-                model=Config.DEFAULT_GEMINI_MODEL,
-                config=types.GenerateContentConfig(
-                    tools=tools_list,
-                    system_instruction=SYSTEM_PROMPT,
-                ),
-            )
-            response = chat.send_message(last_user_msg)
-            return response.text or "Done."
-        except Exception:
-            # Fallback to classic google.generativeai
+        # 1. Try modern google.genai with multi-model fallback & backoff
+        for model_name in models_to_try:
+            for attempt in range(2):
+                try:
+                    from google import genai
+                    from google.genai import types
+
+                    client = genai.Client(api_key=Config.GEMINI_API_KEY)
+                    chat = client.chats.create(
+                        model=model_name,
+                        config=types.GenerateContentConfig(
+                            tools=tools_list,
+                            system_instruction=SYSTEM_PROMPT,
+                        ),
+                    )
+                    response = chat.send_message(last_user_msg)
+                    return response.text or "Done."
+                except Exception as e:
+                    last_err = e
+                    err_str = str(e).lower()
+                    if any(marker in err_str for marker in ("503", "high demand", "unavailable", "429", "resource_exhausted")):
+                        self._notify("thinking", {"step": 1, "message": f"Gemini {model_name} busy (high demand). Retrying..."})
+                        time.sleep(1.5 * (attempt + 1))
+                        continue
+                    else:
+                        break
+
+        # 2. Fallback to classic google.generativeai if needed
+        try:
             import google.generativeai as genai_classic
             genai_classic.configure(api_key=Config.GEMINI_API_KEY)
-            model = genai_classic.GenerativeModel(
-                model_name=Config.DEFAULT_GEMINI_MODEL,
-                tools=tools_list,
-                system_instruction=SYSTEM_PROMPT,
-            )
-            chat = model.start_chat(enable_automatic_function_calling=True)
-            response = chat.send_message(last_user_msg)
-            try:
-                return response.text or "Done."
-            except Exception:
-                parts_text = []
-                for candidate in getattr(response, "candidates", []):
-                    for part in getattr(candidate.content, "parts", []):
-                        if hasattr(part, "text") and part.text:
-                            parts_text.append(part.text)
-                return "\n\n".join(parts_text) if parts_text else "Done."
+            for model_name in models_to_try:
+                for attempt in range(2):
+                    try:
+                        model = genai_classic.GenerativeModel(
+                            model_name=model_name,
+                            tools=tools_list,
+                            system_instruction=SYSTEM_PROMPT,
+                        )
+                        chat = model.start_chat(enable_automatic_function_calling=True)
+                        response = chat.send_message(last_user_msg)
+                        try:
+                            return response.text or "Done."
+                        except Exception:
+                            parts_text = []
+                            for candidate in getattr(response, "candidates", []):
+                                for part in getattr(candidate.content, "parts", []):
+                                    if hasattr(part, "text") and part.text:
+                                        parts_text.append(part.text)
+                            return "\n\n".join(parts_text) if parts_text else "Done."
+                    except Exception as e:
+                        last_err = e
+                        err_str = str(e).lower()
+                        if any(marker in err_str for marker in ("503", "high demand", "unavailable", "429", "resource_exhausted")):
+                            time.sleep(1.5 * (attempt + 1))
+                            continue
+                        else:
+                            break
+        except Exception as e:
+            last_err = e
+
+        return f"⚠️ Gemini services are currently experiencing high demand spikes (503). Please switch to the Groq reasoning engine in the sidebar or try again in a moment. Details: {last_err}"
 
     def run(self, user_query: str) -> str:
         """Run the agent on a user query with the configured LLM provider."""
