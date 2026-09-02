@@ -1,6 +1,7 @@
 """Gemini API Multimodal Video & Audio Transcription Tool."""
 
 import os
+import re
 import time
 from typing import Any, Optional
 from ..config import Config
@@ -54,6 +55,10 @@ def transcribe_video_with_gemini(
             "video_url": video_url,
         }
 
+    audio_file_path: Optional[str] = None
+    video_title: str = "Untitled Video"
+    channel_name: str = "Unknown Channel"
+
     # Step 1: Download lightweight audio
     dl_result = download_youtube_audio(video_url)
     if not dl_result.get("success"):
@@ -63,7 +68,7 @@ def transcribe_video_with_gemini(
             "video_url": video_url,
         }
 
-    audio_file_path = dl_result["file_path"]
+    audio_file_path = dl_result.get("file_path")
     video_title = dl_result.get("title", "Untitled Video")
     channel_name = dl_result.get("channel", "Unknown Channel")
 
@@ -138,27 +143,36 @@ Format your output clearly with the following markdown headers:
             except Exception:
                 pass
 
-        # Step 3: Parse Sections from Gemini Response
+        # Step 3: Parse Sections from Gemini Response (resilient markdown regex)
         summary = ""
         takeaways: list[str] = []
         transcript = raw_text
 
-        if "### Executive Summary" in raw_text:
-            parts = raw_text.split("### Executive Summary")
-            after_summary = parts[1] if len(parts) > 1 else ""
+        summary_match = re.search(r"#{1,3}\s*Executive Summary:?", raw_text, re.IGNORECASE)
+        takeaways_match = re.search(r"#{1,3}\s*Key Takeaways:?", raw_text, re.IGNORECASE)
+        transcript_match = re.search(r"#{1,3}\s*Full Transcript:?", raw_text, re.IGNORECASE)
 
-            if "### Key Takeaways" in after_summary:
-                summary_part, after_takeaways = after_summary.split("### Key Takeaways", 1)
-                summary = summary_part.strip()
+        if summary_match:
+            start_sum = summary_match.end()
+            end_sum = takeaways_match.start() if takeaways_match and takeaways_match.start() > start_sum else (
+                transcript_match.start() if transcript_match and transcript_match.start() > start_sum else len(raw_text)
+            )
+            summary = raw_text[start_sum:end_sum].strip()
 
-                if "### Full Transcript" in after_takeaways:
-                    takeaways_part, transcript_part = after_takeaways.split("### Full Transcript", 1)
-                    takeaways = [t.strip("- *").strip() for t in takeaways_part.strip().split("\n") if t.strip()]
-                    transcript = transcript_part.strip()
-                else:
-                    takeaways = [t.strip("- *").strip() for t in after_takeaways.strip().split("\n") if t.strip()]
-            else:
-                summary = after_summary.strip()
+        if takeaways_match:
+            start_tak = takeaways_match.end()
+            end_tak = transcript_match.start() if transcript_match and transcript_match.start() > start_tak else len(raw_text)
+            raw_takeaways = raw_text[start_tak:end_tak].strip()
+            takeaways = [
+                t.strip("- *•").strip()
+                for t in raw_takeaways.split("\n")
+                if t.strip().startswith(("-", "*", "•")) or (t.strip() and t.strip()[0].isdigit())
+            ]
+            if not takeaways:
+                takeaways = [t.strip("- *•").strip() for t in raw_takeaways.split("\n") if t.strip()]
+
+        if transcript_match:
+            transcript = raw_text[transcript_match.end():].strip()
 
         # Step 4: Save to Knowledge Base if requested
         kb_result = None

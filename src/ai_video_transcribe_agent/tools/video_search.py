@@ -1,6 +1,6 @@
 """SerpApi Video Search Tool for discovering YouTube videos."""
 
-from typing import Any, Optional
+from typing import Any, Optional, Union
 import requests
 from pydantic import BaseModel, Field
 from ..config import Config
@@ -13,7 +13,7 @@ class VideoItem(BaseModel):
     link: str = Field(description="Full YouTube watch URL")
     channel: str = Field(default="Unknown", description="Channel / creator name")
     duration: Optional[str] = Field(default=None, description="Duration of the video")
-    views: Optional[int] = Field(default=None, description="Approximate view count")
+    views: Optional[Union[int, str]] = Field(default=None, description="Approximate view count")
     description: Optional[str] = Field(default=None, description="Video description snippet")
 
 

@@ -79,8 +79,10 @@ def download_youtube_audio(video_url: str, output_dir: Optional[Path] = None) ->
         }
 
 
-def cleanup_audio_file(file_path: str) -> None:
+def cleanup_audio_file(file_path: Optional[str]) -> None:
     """Safely delete a temporary audio file and its enclosing folder."""
+    if not file_path:
+        return
     import shutil
     try:
         p = Path(file_path)

@@ -29,7 +29,7 @@ console = Console(safe_box=True, highlight=False)
 TOOL_REGISTRY: dict[str, Callable] = {
     "search_youtube_videos": lambda **kwargs: search_youtube_videos(
         query=kwargs.get("query", ""),
-        max_results=int(kwargs.get("max_results", 3)),
+        max_results=int(kwargs.get("max_results") or 3),
     ),
     "transcribe_video": lambda **kwargs: transcribe_video_with_gemini(
         video_url=kwargs.get("video_url", ""),
@@ -176,8 +176,6 @@ class VideoTranscribeAgent:
 
     def _execute_gemini_loop(self, max_steps: int = 6) -> str:
         """Run tool calling loop using Gemini API."""
-        import google.generativeai as genai
-
         if not Config.GEMINI_API_KEY:
             raise ValueError(
                 "GEMINI_API_KEY is missing in your .env file. Please add it to use the Gemini agent."
@@ -185,21 +183,34 @@ class VideoTranscribeAgent:
 
         genai.configure(api_key=Config.GEMINI_API_KEY)
 
-        # Gemini supports direct python function calling
+        # Wrapped tool callbacks so UI can track Gemini's automatic tool calls
+        def wrapped_search_youtube_videos(query: str, max_results: int = 3) -> dict[str, Any]:
+            """Search YouTube for relevant videos using SerpApi."""
+            self._notify("tool_call", {"tool_name": "search_youtube_videos", "arguments": {"query": query, "max_results": max_results}})
+            res = search_youtube_videos(query=query, max_results=max_results)
+            self._notify("tool_result", {"tool_name": "search_youtube_videos", "result": res})
+            return res
+
+        def wrapped_transcribe_video(video_url: str) -> dict[str, Any]:
+            """Extract audio and transcribe a video with Gemini."""
+            self._notify("tool_call", {"tool_name": "transcribe_video", "arguments": {"video_url": video_url}})
+            res = transcribe_video_with_gemini(video_url=video_url)
+            self._notify("tool_result", {"tool_name": "transcribe_video", "result": res})
+            return res
+
+        def wrapped_list_knowledge_base() -> dict[str, Any]:
+            """List saved transcripts in the Knowledge Base."""
+            self._notify("tool_call", {"tool_name": "list_knowledge_base", "arguments": {}})
+            res = list_knowledge_base_transcripts()
+            self._notify("tool_result", {"tool_name": "list_knowledge_base", "result": res})
+            return res
+
         tools_list = [
-            search_youtube_videos,
-            transcribe_video_with_gemini,
-            list_knowledge_base_transcripts,
+            wrapped_search_youtube_videos,
+            wrapped_transcribe_video,
+            wrapped_list_knowledge_base,
         ]
 
-        model = genai.GenerativeModel(
-            model_name=Config.DEFAULT_GEMINI_MODEL,
-            tools=tools_list,
-            system_instruction=SYSTEM_PROMPT,
-        )
-
-        chat = model.start_chat(enable_automatic_function_calling=True)
-        # Send user prompt (extract latest user message)
         last_user_msg = next(
             (m["content"] for m in reversed(self.messages) if m.get("role") == "user"),
             "",
@@ -215,8 +226,40 @@ class VideoTranscribeAgent:
             )
         )
 
-        response = chat.send_message(last_user_msg)
-        return response.text or "Done."
+        try:
+            from google import genai
+            from google.genai import types
+
+            client = genai.Client(api_key=Config.GEMINI_API_KEY)
+            chat = client.chats.create(
+                model=Config.DEFAULT_GEMINI_MODEL,
+                config=types.GenerateContentConfig(
+                    tools=tools_list,
+                    system_instruction=SYSTEM_PROMPT,
+                ),
+            )
+            response = chat.send_message(last_user_msg)
+            return response.text or "Done."
+        except Exception:
+            # Fallback to classic google.generativeai
+            import google.generativeai as genai_classic
+            genai_classic.configure(api_key=Config.GEMINI_API_KEY)
+            model = genai_classic.GenerativeModel(
+                model_name=Config.DEFAULT_GEMINI_MODEL,
+                tools=tools_list,
+                system_instruction=SYSTEM_PROMPT,
+            )
+            chat = model.start_chat(enable_automatic_function_calling=True)
+            response = chat.send_message(last_user_msg)
+            try:
+                return response.text or "Done."
+            except Exception:
+                parts_text = []
+                for candidate in getattr(response, "candidates", []):
+                    for part in getattr(candidate.content, "parts", []):
+                        if hasattr(part, "text") and part.text:
+                            parts_text.append(part.text)
+                return "\n\n".join(parts_text) if parts_text else "Done."
 
     def run(self, user_query: str) -> str:
         """Run the agent on a user query with the configured LLM provider."""

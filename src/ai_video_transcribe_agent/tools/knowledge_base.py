@@ -8,10 +8,32 @@ from typing import Any, Optional
 from ..config import Config
 
 
+WINDOWS_RESERVED_NAMES = {
+    "CON", "PRN", "AUX", "NUL",
+    "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9",
+    "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9",
+}
+
+
 def sanitize_filename(name: str) -> str:
-    """Convert a video title into a safe, clean filesystem filename."""
-    name = re.sub(r'[\\/*?:"<>|]', "", name)
+    """Convert a video title into a safe, clean filesystem filename.
+    
+    Handles Windows reserved names (CON, NUL, AUX), illegal characters,
+    trailing periods/spaces, and length limits.
+    """
+    if not name:
+        return "untitled_video"
+
+    # Remove illegal filename characters
+    name = re.sub(r'[\\/*?:"<>|\']', "", name)
+    # Collapse multiple whitespace to single underscore
     name = re.sub(r"\s+", "_", name.strip())
+    # Strip leading/trailing dots, underscores and spaces
+    name = name.strip(". _")
+
+    if not name or name.upper() in WINDOWS_RESERVED_NAMES:
+        return "untitled_video"
+
     return name[:80] or "untitled_video"
 
 
