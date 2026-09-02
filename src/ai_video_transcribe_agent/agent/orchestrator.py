@@ -92,18 +92,35 @@ class VideoTranscribeAgent:
             )
 
         client = Groq(api_key=Config.GROQ_API_KEY)
-        model = Config.DEFAULT_GROQ_MODEL
+        groq_models = [Config.DEFAULT_GROQ_MODEL, "openai/gpt-oss-20b", "qwen/qwen3.8-27b"]
 
         for step in range(max_steps):
             self._notify("thinking", {"step": step + 1, "message": "Reasoning about next action..."})
 
-            response = client.chat.completions.create(
-                model=model,
-                messages=self.messages,
-                tools=AGENT_TOOLS,
-                tool_choice="auto",
-                temperature=0.2,
-            )
+            response = None
+            last_err = None
+            for model_candidate in groq_models:
+                try:
+                    response = client.chat.completions.create(
+                        model=model_candidate,
+                        messages=self.messages,
+                        tools=AGENT_TOOLS,
+                        tool_choice="auto",
+                        temperature=0.2,
+                    )
+                    break
+                except Exception as e:
+                    last_err = e
+                    err_str = str(e).lower()
+                    if any(marker in err_str for marker in ("413", "429", "rate_limit", "tpm", "tokens per minute", "too large")):
+                        continue
+                    else:
+                        raise e
+
+            if response is None:
+                fail_msg = f"⚠️ Groq rate limit or token capacity exceeded on current tier. Details: {last_err}"
+                self.messages.append({"role": "assistant", "content": fail_msg})
+                return fail_msg
 
             response_message = response.choices[0].message
             tool_calls = response_message.tool_calls
@@ -163,13 +180,25 @@ class VideoTranscribeAgent:
                     )
                 )
 
+                # Truncate raw transcript for LLM context to prevent 413 token overflow,
+                # while preserving the full result for UI display and Knowledge Base storage.
+                llm_tool_payload = tool_result
+                if isinstance(tool_result, dict) and "transcript" in tool_result:
+                    llm_tool_payload = dict(tool_result)
+                    raw_tx = str(llm_tool_payload.get("transcript", ""))
+                    if len(raw_tx) > 1200:
+                        llm_tool_payload["transcript"] = (
+                            raw_tx[:1200]
+                            + f"\n\n[... Transcript continues ({len(raw_tx)} chars total). Complete verbatim transcript saved to {tool_result.get('markdown_file', 'Knowledge Base')} ...]"
+                        )
+
                 # Send observation back to the agent
                 self.messages.append(
                     {
                         "tool_call_id": tool_call.id,
                         "role": "tool",
                         "name": function_name,
-                        "content": json.dumps(tool_result),
+                        "content": json.dumps(llm_tool_payload),
                     }
                 )
 
