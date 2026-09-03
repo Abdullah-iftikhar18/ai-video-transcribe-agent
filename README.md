@@ -12,7 +12,7 @@
 
 ---
 
-## ▶️ Agent Studio
+## ▶️ YouTube Transcribe Agent
 
 ![AI Video Transcribe Agent UI](assets/app_demo.png)
 
