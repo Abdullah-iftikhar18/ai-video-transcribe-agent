@@ -9,18 +9,31 @@ ROOT_DIR = Path(__file__).resolve().parent.parent.parent
 load_dotenv(dotenv_path=ROOT_DIR / ".env")
 
 
+def _get_setting(key: str, default: str = "") -> str:
+    """Retrieve configuration from environment variables or Streamlit secrets."""
+    val = os.getenv(key, "").strip()
+    if not val:
+        try:
+            import streamlit as st
+            if hasattr(st, "secrets") and key in st.secrets:
+                val = str(st.secrets[key]).strip()
+        except Exception:
+            pass
+    return val or default
+
+
 class Config:
     """Central configuration for API keys, model parameters, and storage paths."""
 
     # API Keys
-    SERPAPI_API_KEY: str = os.getenv("SERPAPI_API_KEY", "").strip()
-    GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "").strip()
-    GROQ_API_KEY: str = os.getenv("GROQ_API_KEY", "").strip()
+    SERPAPI_API_KEY: str = _get_setting("SERPAPI_API_KEY")
+    GEMINI_API_KEY: str = _get_setting("GEMINI_API_KEY")
+    GROQ_API_KEY: str = _get_setting("GROQ_API_KEY")
 
     # Agent & LLM defaults
-    DEFAULT_LLM_PROVIDER: str = os.getenv("DEFAULT_LLM_PROVIDER", "groq").lower()
-    DEFAULT_GROQ_MODEL: str = os.getenv("DEFAULT_GROQ_MODEL", "openai/gpt-oss-120b")
-    DEFAULT_GEMINI_MODEL: str = os.getenv("DEFAULT_GEMINI_MODEL", "gemini-3.6-flash")
+    DEFAULT_LLM_PROVIDER: str = _get_setting("DEFAULT_LLM_PROVIDER", "groq").lower()
+    DEFAULT_GROQ_MODEL: str = _get_setting("DEFAULT_GROQ_MODEL", "openai/gpt-oss-120b")
+    DEFAULT_GEMINI_MODEL: str = _get_setting("DEFAULT_GEMINI_MODEL", "gemini-3.5-flash")
 
     @classmethod
     def get_gemini_models_chain(cls) -> list[str]:
