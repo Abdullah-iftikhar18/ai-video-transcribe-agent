@@ -31,3 +31,6 @@ temp_audio/
 # Generated Transcripts & Knowledge Base files (keep folder, ignore files)
 transcripts/*
 !transcripts/.gitkeep
+
+# Local developer workflow notes (not pushed to remote)
+WORKFLOW.md
