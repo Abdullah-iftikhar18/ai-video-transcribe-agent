@@ -12,7 +12,7 @@
 
 ---
 
-## 📸 Application Preview
+## ▶️ Agent Studio
 
 ![AI Video Transcribe Agent UI](assets/app_demo.png)
 
