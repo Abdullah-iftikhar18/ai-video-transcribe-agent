@@ -2,16 +2,25 @@
 
 > An autonomous AI-powered assistant that searches YouTube, transcribes video content with timestamps, synthesizes executive summaries, and builds a local Knowledge Base — powered by Tool Calling with Groq and Google Gemini.
 
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://ai-video-transcribe-agent.streamlit.app)
 [![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://python.org)
 [![Framework](https://img.shields.io/badge/Framework-Streamlit-FF4B4B.svg)](https://streamlit.io)
 [![Reasoning](https://img.shields.io/badge/Reasoning-Groq%20%7C%20Gemini-orange.svg)]()
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
+🌐 **Live Web Application**: [ai-video-transcribe-agent.streamlit.app](https://ai-video-transcribe-agent.streamlit.app)
+
+---
+
+## 📸 Application Preview
+
+![AI Video Transcribe Agent UI](assets/app_demo.png)
+
 ---
 
 ## ✨ Overview
 
-The **AI Video Transcribe Agent** turns YouTube videos into structured, searchable notes in seconds. Instead of simply generating text, the agent autonomously decides when to search YouTube via **SerpApi**, extract transcripts and audio via **yt-dlp**, analyze content using **Groq** or **Google Gemini**, and persist structured notes to your disk.
+The **AI Video Transcribe Agent** turns YouTube videos into structured, searchable notes in seconds. Instead of simply generating text, the agent autonomously decides when to search YouTube via **SerpApi**, extract transcripts and audio via **yt-dlp**, analyze content using **Groq** or **Google Gemini**, and persist structured notes to disk.
 
 It comes equipped with both an interactive **YouTube-themed Streamlit Web App** and a terminal **CLI**.
 
@@ -29,23 +38,45 @@ It comes equipped with both an interactive **YouTube-themed Streamlit Web App** 
 
 ---
 
-## 🏗️ How It Works
+## 🏗️ System Architecture
 
 ```mermaid
-flowchart LR
-    A["User Request"] --> B["Agent Orchestrator"]
-    B --> C{"Tool Selection"}
-    C -->|"Search"| D["SerpApi Search"]
-    C -->|"Transcribe"| E["Transcription Engine"]
-    C -->|"List"| F["Knowledge Base"]
-    E --> G["Save Markdown & JSON"]
-    G --> H["Synthesized Response"]
-    H --> I["Web UI / CLI"]
+flowchart TD
+    User(["👤 User Request"]) --> Interface["🖥️ Streamlit Web App (app.py) / CLI (main.py)"]
+    Interface --> Orch["🧠 VideoTranscribeAgent (orchestrator.py)\nState & ReAct Loop"]
+    
+    subgraph "Reasoning Layer"
+        Orch --> EngineToggle{"Engine Toggle"}
+        EngineToggle -- "groq" --> GroqEngine["⚡ Groq LPU Engine\n(openai/gpt-oss-120b / 20b)"]
+        EngineToggle -- "gemini" --> GeminiEngine["🤖 Google Gemini Engine\n(gemini-3.5-flash / 3.8-flash)"]
+    end
+
+    GroqEngine -- "Function Call" --> Dispatcher{"Tool Dispatcher"}
+    GeminiEngine -- "Function Call" --> Dispatcher
+
+    subgraph "Tool Execution Layer"
+        Dispatcher -- "search_youtube_videos" --> SearchTool["🔍 SerpApi Search\n(video_search.py + Pydantic v2)"]
+        Dispatcher -- "transcribe_video" --> TranscribeEngine["🎙️ Dual-Engine Transcriber\n(transcription.py)"]
+        Dispatcher -- "list_knowledge_base" --> KBTool["📁 Storage Catalog\n(knowledge_base.py)"]
+    end
+
+    subgraph "Transcription Pipeline"
+        TranscribeEngine --> SubCheck{"Captions Available?"}
+        SubCheck -- "YES (Fast Path)" --> FastExt["⚡ Instant Caption Extraction (yt-dlp)\n+ Groq LPU Summary (~4.5s total)"]
+        SubCheck -- "NO (Audio Fallback)" --> AudioExt["🎧 Download Audio (yt-dlp)\n+ Gemini Multimodal Audio API"]
+    end
+
+    FastExt --> Storage["💾 Knowledge Base (transcripts/)\n• Markdown (.md)\n• Structured JSON (.json)"]
+    AudioExt --> Storage
+    Storage --> Sanitizer["🛡️ Token Context Sanitizer\n(Prevents 413 token overflow)"]
+    Sanitizer --> Synthesis["📝 Final Answer Synthesis"]
+    Synthesis --> Interface
 ```
 
-1. **Reason**: The agent evaluates your prompt using ReAct tool calling.
+### Workflow Lifecycle:
+1. **Reason**: The agent evaluates your prompt using the ReAct (Reason + Act) tool calling loop.
 2. **Act**: It invokes the necessary tool (search YouTube, transcribe a video, or list stored notes).
-3. **Observe**: It processes the tool output, saves structured files to `transcripts/`, and returns a clean, formatted response.
+3. **Observe**: It processes the tool output, archives structured files to `transcripts/`, and returns a clean, formatted response.
 
 ---
 
@@ -150,11 +181,11 @@ uv run python main.py
 ### Example Prompts
 
 - **Direct Transcription:**
-  > *"Transcribe this video: https://www.youtube.com/watch?v=jNQXAC9IVRw"*
+  > `"Transcribe this video: https://www.youtube.com/watch?v=jNQXAC9IVRw"`
 - **Search & Auto-Transcribe:**
-  > *"Find a popular tutorial on Python async/await and transcribe the best one."*
+  > `"Find a popular tutorial on Python async/await and transcribe the best one."`
 - **Knowledge Base Query:**
-  > *"What videos have I transcribed so far?"*
+  > `"What videos have I transcribed so far?"`
 
 ---
 
@@ -165,7 +196,11 @@ ai-video-transcribe-agent/
 ├── app.py                             # Streamlit web dashboard
 ├── main.py                            # Terminal CLI entrypoint
 ├── pyproject.toml                     # Dependencies and project metadata
+├── requirements.txt                   # Production dependencies for cloud deployment
+├── packages.txt                       # System dependencies (ffmpeg)
 ├── .env.example                       # Environment variables template
+├── assets/                            # Application screenshots and demo assets
+│   └── app_demo.png                   # Web app screenshot
 ├── transcripts/                       # Stored transcript notes (.md & .json)
 ├── src/ai_video_transcribe_agent/
 │   ├── config.py                      # Configuration & model fallback management
